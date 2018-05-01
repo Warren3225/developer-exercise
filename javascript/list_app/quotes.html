@@ -1,23 +1,219 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
                     "http://www.w3.org/TR/html4/loose.dtd">
 <html>
+
 <head>
   <title>List App</title>
   <script src="http://code.jquery.com/jquery-latest.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
-  <script src="https://unpkg.com/react@16/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react@16/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+  <style>
+    #table {
+      font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+      border-collapse: collapse;
+      table-layout: fixed;
+      width: 50%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    #table td,
+    #table th {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+
+    #table tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    #table tr:hover {
+      background-color: #ddd;
+    }
+
+    #table th {
+      padding-top: 12px;
+      padding-bottom: 12px;
+      text-align: left;
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    #page-numbers {
+      list-style: none;
+      display: flex;
+    }
+
+    #buttons {
+      position: fixed;
+      height: 50px;
+      bottom: 5px;
+      left: 15%;
+      right: 0px;
+      margin-bottom: 20px;
+    }
+  </style>
 </head>
+
 <body>
   <div id="quotes"></div>
   <script type="text/babel">
-    ReactDOM.render(
-      <div>
-        <h1>Quotes</h1>
-      </div>,
-      document.getElementById('quotes')
-    );
+   class Main extends React.Component {
+
+    constructor(props) {
+        super(props)
+        this.state = {
+            data: [],
+            currentPage: 1,
+            quotesPerPage: 10,
+            allQuotes: false,
+            theme: 'all',
+            searchBarValue: ''
+        }
+
+        this.handleClickPagination = this.handleClickPagination.bind(this)
+        this.handleClickAllQuotes = this.handleClickAllQuotes.bind(this)
+        this.handleClickTheme = this.handleClickTheme.bind(this)
+        this.handleChange = this.handleChange.bind(this);
+    }
+
+    handleClickPagination(e) {
+        this.setState({ currentPage: Number(e.target.id), allQuotes: false })
+    }
+
+    handleClickAllQuotes(e) {
+        this.setState({ allQuotes: !this.state.allQuotes })
+    }
+
+    handleClickTheme(e) {
+        this.setState({ theme: e.target.value })
+    }
+    handleChange(e) {
+        this.setState({ searchBarValue: e.target.value })
+    }
+
+    componentWillMount() {
+        const url = 'https://gist.githubusercontent.com/anonymous/8f61a8733ed7fa41c4ea/raw/1e90fd2741bb6310582e3822f59927eb535f6c73/quotes.json';
+        fetch(url)
+            .then((response) => {
+                if (response.status >= 400) {
+                    throw new Error('Bad response from server');
+                }
+                return response.json();
+            })
+            .then((data) => {
+                this.setState({ data })
+            })
+            .catch(error => console.error(error))
+    }
+
+    render() {
+        let { data, currentPage, quotesPerPage } = this.state;
+        //adding index key
+        data.forEach((object, i) => {
+            object.Index = (i + 1).toString()
+            return object;
+        })
+        //filtering based on state
+        data = data.filter(quote => {
+            if (this.state.theme === 'all') {
+                return quote;
+            }
+            else if (quote.theme === this.state.theme) {
+                return quote;
+            }
+        }).filter(quote => quote.quote.includes(this.state.searchBarValue))
+
+        //pagination logic
+        const indexOfLastQuote = currentPage * quotesPerPage
+        const indexofFirstQuote = indexOfLastQuote - quotesPerPage;
+        const quotesOnPage = data.slice(indexofFirstQuote, indexOfLastQuote)
+
+        const pageNumbers = [];
+        for (let i = 1; i <= Math.ceil(data.length / quotesPerPage); i++) {
+            pageNumbers.push(i);
+        }
+
+        const renderPageNumbers = pageNumbers.map(number => {
+            return (
+                <button
+                    key={number}
+                    id={number}
+                    onClick={this.handleClickPagination}
+                >
+                    {number}
+                </button>
+            );
+        });
+
+        //creating component lists
+        let tableCategories = _.keys(data[0]).map(header => header[0].toUpperCase() + header.slice(1)).filter(word => word !== "Index").sort()
+        tableCategories.unshift("Index")
+        let tableHeaders = tableCategories.map((category, i) => <th key={i}>{category}</th>)
+
+        let tableRows;
+
+        if (!this.state.allQuotes) {
+            tableRows = quotesOnPage.map(quote => {
+                return (<tr key={quote.Index}>
+                    <td>{quote.Index}</td>
+                    <td>{quote.context}</td>
+                    <td>{quote.quote}</td>
+                    <td>{quote.source}</td>
+                    <td>{quote.theme}</td>
+                </tr>)
+            })
+        } else {
+            tableRows = data.map(quote => {
+                return (<tr key={quote.Index}>
+                    <td>{quote.Index}</td>
+                    <td>{quote.context}</td>
+                    <td>{quote.quote}</td>
+                    <td>{quote.source}</td>
+                    <td>{quote.theme}</td>
+                </tr>)
+            })
+        }
+        return (
+            <div>
+                <form>
+                    <input type='text' value={this.state.searchBarValue} placeholder="Filter by Quote Text" onChange={this.handleChange} />
+                </form>
+                <div id="table">
+                    <h1>Quotes</h1>
+                    <p>Filter by Theme: 
+                      <button value="all" onClick={this.handleClickTheme}>All</button>
+                      <button value="movies" onClick={this.handleClickTheme}>Movies</button>
+                      <button value="games" onClick={this.handleClickTheme}>Games</button>
+                    </p>
+                    <table>
+                        <tbody>
+                            <tr>
+                                {tableHeaders}
+                            </tr>
+                            {tableRows}
+                        </tbody>
+                    </table>
+                    <div id="buttons">
+                        {
+                            (this.state.allQuotes === false ? <button onClick={this.handleClickAllQuotes}>Show All Quotes</button> : null)
+                        }
+                        <br />
+                        {renderPageNumbers}
+                    </div>
+                </div>
+            </div>
+        )
+    }
+}
+
+ReactDOM.render(
+    <Main />,
+    document.getElementById('quotes')
+);
   </script>
 </body>
+
 </html>

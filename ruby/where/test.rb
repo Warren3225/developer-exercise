@@ -1,5 +1,16 @@
 require 'minitest/autorun'
 
+class Array 
+  def where(hash = {})
+    self.select do |fixture| #iterate over fixtures indexes |fixture| 
+      hash.all?  do |key, value| #return true as long as hash key-value pairs exists
+        value === fixture[key]
+      end
+    end
+  end
+end 
+
+
 class WhereTest < Minitest::Test
   def setup
     @boris   = {:name => 'Boris The Blade', :quote => "Heavy is good. Heavy is reliable. If it doesn't work you can always hit them.", :title => 'Snatch', :rank => 4}
@@ -11,7 +22,7 @@ class WhereTest < Minitest::Test
   end
 
   def test_where_with_exact_match
-    assert_equal [@wolf], @fixtures.where(:name => 'The Wolf'),
+    assert_equal [@wolf], @fixtures.where(:name => 'The Wolf')
   end
 
   def test_where_with_partial_match
@@ -31,3 +42,5 @@ class WhereTest < Minitest::Test
   end
 end
 
+#WhereTest.new('test').hello
+WhereTest
